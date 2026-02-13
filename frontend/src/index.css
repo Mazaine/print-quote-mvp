@@ -1,0 +1,163 @@
+:root {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  color: #102231;
+  background: radial-gradient(circle at top, #eef4ff 0%, #f9fbff 45%, #ffffff 100%);
+  line-height: 1.4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+.page {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.container {
+  width: min(760px, 100%);
+  background: #ffffff;
+  border: 1px solid #dbe5ef;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 12px 36px rgba(16, 34, 49, 0.08);
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+h1,
+h2 {
+  margin: 0;
+}
+
+.health {
+  margin: 0;
+  color: #4a5d6d;
+  font-size: 0.95rem;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 14px;
+  margin-bottom: 16px;
+}
+
+label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: #2f465a;
+  font-size: 0.95rem;
+}
+
+select,
+button {
+  border: 1px solid #b7c8d8;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font: inherit;
+}
+
+select:focus,
+button:focus {
+  outline: 2px solid #76a2ff;
+  outline-offset: 1px;
+}
+
+.checkbox-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  padding-top: 22px;
+}
+
+.checkbox-row input {
+  width: 18px;
+  height: 18px;
+}
+
+button {
+  background: linear-gradient(135deg, #0f6ad8, #0d55ae);
+  color: #ffffff;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+}
+
+button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.error {
+  margin: 6px 0 0;
+  color: #b42318;
+}
+
+.result-card {
+  margin-top: 20px;
+  border: 1px solid #dbe5ef;
+  border-radius: 14px;
+  padding: 16px;
+  background: #f9fcff;
+}
+
+.final-price {
+  margin: 8px 0 14px;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #083f82;
+}
+
+.breakdown-list {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+}
+
+.breakdown-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 8px 0;
+  border-bottom: 1px dashed #cfdde9;
+}
+
+.breakdown-list li:last-child {
+  border-bottom: none;
+}
+
+details {
+  border-top: 1px solid #dbe5ef;
+  padding-top: 10px;
+}
+
+summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+pre {
+  margin: 10px 0 0;
+  padding: 12px;
+  border-radius: 8px;
+  background: #eef4fb;
+  overflow: auto;
+  font-size: 0.85rem;
+}
