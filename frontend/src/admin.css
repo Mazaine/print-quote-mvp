@@ -1,0 +1,190 @@
+﻿.admin-page {
+  min-height: calc(100vh - 60px);
+  padding: 24px 16px;
+}
+
+.admin-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  gap: 14px;
+}
+
+.admin-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-toolbar h1 {
+  margin: 0;
+}
+
+.admin-toolbar-right {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.admin-search {
+  min-width: 220px;
+}
+
+.admin-card,
+.admin-panel {
+  background: #fff;
+  border: 1px solid #dbe5ef;
+  border-radius: 12px;
+  padding: 12px;
+  box-shadow: 0 8px 22px rgba(16, 34, 49, 0.06);
+}
+
+.admin-panel-body {
+  margin-top: 10px;
+  display: grid;
+  gap: 10px;
+}
+
+.admin-toggle {
+  width: fit-content;
+}
+
+.admin-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-grid-2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-grid-4 {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.admin-grid-6 {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+
+.admin-inline-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.active-chips {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #eef4fb;
+  border: 1px solid #cfdde9;
+  color: #102231;
+}
+
+.save-bar {
+  border: 1px solid #b9d5ff;
+  border-radius: 10px;
+  background: #f3f9ff;
+  padding: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.admin-table-wrap {
+  max-height: 500px;
+  overflow: auto;
+  border: 1px solid #dbe5ef;
+  border-radius: 10px;
+}
+
+.admin-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+}
+
+.admin-table th,
+.admin-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #edf2f7;
+  text-align: left;
+}
+
+.admin-table thead th {
+  position: sticky;
+  top: 0;
+  background: #f6f9fc;
+  z-index: 1;
+}
+
+.admin-table tbody tr:hover {
+  background: #f7fbff;
+}
+
+.admin-table tbody tr.is-dirty {
+  background: #fff8e8;
+}
+
+.price-input {
+  width: 120px;
+}
+
+.mini-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.mini {
+  padding: 6px 8px;
+  font-size: 12px;
+}
+
+.mini.danger {
+  background: #b42318;
+}
+
+.admin-pagination {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.admin-items-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-item-card {
+  border: 1px solid #dbe5ef;
+  border-radius: 10px;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: 100px 1fr;
+  gap: 10px;
+}
+
+.admin-item-card img {
+  width: 100px;
+  height: 80px;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+@media (max-width: 900px) {
+  .admin-grid-6,
+  .admin-grid-4,
+  .admin-grid-2 {
+    grid-template-columns: 1fr;
+  }
+}

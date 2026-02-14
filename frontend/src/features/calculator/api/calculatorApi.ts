@@ -4,7 +4,7 @@ export const API_BASE = "https://print-quote-mvp.onrender.com";
 
 
 export async function getHealth(): Promise<{ status: string }> {
-  const response = await fetch(`${API_BASE}/health`);
+  const response = await http("/health");
   if (!response.ok) {
     throw new Error(`Health check failed with status ${response.status}`);
   }
@@ -12,7 +12,7 @@ export async function getHealth(): Promise<{ status: string }> {
 }
 
 export async function calculateQuote(payload: QuoteRequest): Promise<QuoteResponse> {
-  const response = await fetch(`${API_BASE}/quote/calculate`, {
+  const response = await http("/quote/calculate", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -26,4 +26,12 @@ export async function calculateQuote(payload: QuoteRequest): Promise<QuoteRespon
   }
 
   return (await response.json()) as QuoteResponse;
+}
+
+export async function getCalculatorOptions(): Promise<CalculatorCatalogResponse> {
+  const response = await http("/calculator/options");
+  if (!response.ok) {
+    throw new Error(`Options request failed with status ${response.status}`);
+  }
+  return (await response.json()) as CalculatorCatalogResponse;
 }

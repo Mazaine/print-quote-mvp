@@ -1,64 +1,76 @@
 from __future__ import annotations
-from typing import Dict, Tuple, List
+import math
+from typing import List
 
-from .models import QuoteRequest, BreakdownItem
+from sqlmodel import Session
 
-ANCHOR_PRICES: Dict[Tuple[str, int], int] = {
-    ("A6", 100): 4500,
-    ("A6", 250): 6500,
-    ("A6", 500): 8500,
-    ("A6", 1000): 12000,
-
-    ("A5", 100): 6500,
-    ("A5", 250): 9000,
-    ("A5", 500): 12000,
-    ("A5", 1000): 17000,
-
-    ("A4", 100): 9500,
-    ("A4", 250): 14000,
-    ("A4", 500): 19000,
-    ("A4", 1000): 27000,
-}
+from .db import engine
+from .models import BreakdownItem, QuoteRequest
+from .pricing_service import calc_per_sheet, get_product_spec, get_sheet, get_sheet_price
 
 SURCHARGE_PAPER_170G = 900
-SURCHARGE_COLOR_4_0 = 1500
-SURCHARGE_COLOR_4_4 = 3000
 SURCHARGE_LAMINATION = 2000
 MIN_PRICE = 5000
 
 
 def calculate_quote(req: QuoteRequest) -> tuple[int, List[BreakdownItem]]:
-    key = (req.size, int(req.qty))
-    if key not in ANCHOR_PRICES:
-        raise ValueError(f"No anchor price for size={req.size} qty={req.qty}")
+    with Session(engine) as session:
+        product_spec = get_product_spec(session, product_code=req.product, size_key=req.size)
+        if product_spec is None:
+            raise ValueError(f"No product spec for product={req.product} size={req.size}")
+
+        sheet = get_sheet(session, product_spec.default_sheet_code)
+        if sheet is None:
+            raise ValueError(f"No sheet found for code={product_spec.default_sheet_code}")
+
+        print_mode = req.color
+        sheet_price = get_sheet_price(session, sheet.code, print_mode)
+        if sheet_price is None:
+            raise ValueError(f"No sheet price for sheet={sheet.code} print_mode={print_mode}")
+
+    per_sheet = calc_per_sheet(sheet, product_spec)
+    if per_sheet <= 0:
+        raise ValueError(
+            f"Product does not fit printable area: product={req.product} size={req.size}"
+        )
+
+    sheets_needed = int(math.ceil(int(req.qty) / per_sheet))
+    billable_qty = sheets_needed * per_sheet
+    printing_price = sheets_needed * sheet_price.base_price_per_sheet + sheet_price.setup_fee
 
     breakdown: List[BreakdownItem] = []
-
-    anchor = ANCHOR_PRICES[key]
     breakdown.append(
-        BreakdownItem(label=f"Anchor (130g, 1+0) — {req.size} / {req.qty} db", amount=anchor)
+        BreakdownItem(
+            label=(
+                f"Iv: {sheet.code} "
+                f"(printable {sheet.printable_width_mm}x{sheet.printable_height_mm} mm)"
+            ),
+            amount=0,
+        )
+    )
+    breakdown.append(BreakdownItem(label=f"Impozicio: {per_sheet} db/iv", amount=0))
+    breakdown.append(BreakdownItem(label=f"Ivek szama: {sheets_needed} iv", amount=0))
+    breakdown.append(BreakdownItem(label=f"Szamlazott darab: {billable_qty} db", amount=0))
+    breakdown.append(
+        BreakdownItem(
+            label=f"Nyomtatas: {print_mode} - {sheets_needed} iv",
+            amount=int(printing_price),
+        )
     )
 
-    total = anchor
+    total = int(printing_price)
 
     if req.paper == "170g":
         total += SURCHARGE_PAPER_170G
-        breakdown.append(BreakdownItem(label="Papír felár: 170g", amount=SURCHARGE_PAPER_170G))
-
-    if req.color == "4+0":
-        total += SURCHARGE_COLOR_4_0
-        breakdown.append(BreakdownItem(label="Szín felár: 4+0", amount=SURCHARGE_COLOR_4_0))
-    elif req.color == "4+4":
-        total += SURCHARGE_COLOR_4_4
-        breakdown.append(BreakdownItem(label="Szín felár: 4+4", amount=SURCHARGE_COLOR_4_4))
+        breakdown.append(BreakdownItem(label="Papir felar: 170g", amount=SURCHARGE_PAPER_170G))
 
     if req.lamination:
         total += SURCHARGE_LAMINATION
-        breakdown.append(BreakdownItem(label="Fóliázás felár", amount=SURCHARGE_LAMINATION))
+        breakdown.append(BreakdownItem(label="Foliazas felar", amount=SURCHARGE_LAMINATION))
 
     if total < MIN_PRICE:
         adjust = MIN_PRICE - total
         total = MIN_PRICE
-        breakdown.append(BreakdownItem(label="Minimum ár korrekció", amount=adjust))
+        breakdown.append(BreakdownItem(label="Minimum ar korrekcio", amount=adjust))
 
     return total, breakdown
