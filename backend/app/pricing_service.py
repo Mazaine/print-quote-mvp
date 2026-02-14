@@ -259,3 +259,46 @@ def resolve_anchor_price(anchor_map: Dict[int, float], qty: int) -> Tuple[int, f
 
     smallest = sorted_anchors[0]
     return smallest, anchor_map[smallest]
+
+
+def get_calculator_options(session: Session) -> dict:
+    rows = session.exec(
+        select(AnchorPrice)
+        .where(AnchorPrice.product_code == "flyer")
+        .where(AnchorPrice.material_code == "130g")
+        .order_by(AnchorPrice.size_key, AnchorPrice.anchor_qty)
+    ).all()
+
+    sizes = sorted({row.size_key for row in rows})
+    qtys = sorted({int(row.anchor_qty) for row in rows})
+    papers = ["130g", "170g"]
+    colors = ["1+0", "4+0", "4+4"]
+
+    valid_combinations = []
+    for row in rows:
+        for paper in papers:
+            for color in colors:
+                valid_combinations.append(
+                    {
+                        "size": row.size_key,
+                        "paper": paper,
+                        "qty": int(row.anchor_qty),
+                        "color": color,
+                    }
+                )
+
+    return {
+        "products": [
+            {
+                "product_code": "flyer",
+                "label": "Szórólap",
+                "options": {
+                    "size": sizes,
+                    "paper": papers,
+                    "qty": qtys,
+                    "color": colors,
+                },
+                "valid_combinations": valid_combinations,
+            }
+        ]
+    }

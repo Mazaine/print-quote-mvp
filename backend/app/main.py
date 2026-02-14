@@ -6,6 +6,7 @@ from .db import engine, init_db
 from .models import QuoteRequest, QuoteResponse
 from .pricing import calculate_quote
 from .pricing_service import (
+    get_calculator_options,
     seed_anchor_prices,
     seed_product_specs,
     seed_sheet_prices,
@@ -163,6 +164,12 @@ def list_products():
             }
         }
     ]
+
+
+@app.get("/calculator/options")
+def calculator_options():
+    with Session(engine) as session:
+        return get_calculator_options(session)
 
 
 @app.post("/quote/calculate", response_model=QuoteResponse)

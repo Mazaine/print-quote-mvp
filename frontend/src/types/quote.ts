@@ -21,3 +21,26 @@ export interface QuoteResponse {
   currency: "HUF";
   breakdown: QuoteBreakdownItem[];
 }
+
+export interface CalculatorCombination {
+  size: Size;
+  paper: Paper;
+  qty: Qty;
+  color: Color;
+}
+
+export interface CalculatorProductOptions {
+  product_code: "flyer";
+  label: string;
+  options: {
+    size: Size[];
+    paper: Paper[];
+    qty: Qty[];
+    color: Color[];
+  };
+  valid_combinations: CalculatorCombination[];
+}
+
+export interface CalculatorCatalogResponse {
+  products: CalculatorProductOptions[];
+}

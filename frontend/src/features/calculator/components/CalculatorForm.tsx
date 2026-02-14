@@ -1,17 +1,17 @@
 ﻿import type { Color, Paper, Qty, Size } from "../../../types";
 
-const sizeOptions: Size[] = ["A6", "A5", "A4"];
-const paperOptions: Paper[] = ["130g", "170g"];
-const colorOptions: Color[] = ["1+0", "4+0", "4+4"];
-const qtyOptions: Qty[] = [100, 250, 500, 1000];
-
 interface CalculatorFormProps {
   size: Size;
   paper: Paper;
   color: Color;
   qty: Qty;
+  sizeOptions: Size[];
+  paperOptions: Paper[];
+  colorOptions: Color[];
+  qtyOptions: Qty[];
   lamination: boolean;
   loading: boolean;
+  submitDisabled: boolean;
   onSizeChange: (value: Size) => void;
   onPaperChange: (value: Paper) => void;
   onColorChange: (value: Color) => void;
@@ -25,8 +25,13 @@ export function CalculatorForm({
   paper,
   color,
   qty,
+  sizeOptions,
+  paperOptions,
+  colorOptions,
+  qtyOptions,
   lamination,
   loading,
+  submitDisabled,
   onSizeChange,
   onPaperChange,
   onColorChange,
@@ -85,7 +90,7 @@ export function CalculatorForm({
         <span>Fóliázás</span>
       </label>
 
-      <button type="submit" disabled={loading}>
+      <button type="submit" disabled={loading || submitDisabled}>
         {loading ? "Betöltés..." : "Ár kiszámítása"}
       </button>
     </form>
