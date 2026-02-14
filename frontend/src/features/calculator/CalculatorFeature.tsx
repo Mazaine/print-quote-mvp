@@ -1,32 +1,50 @@
 ﻿import { useEffect, useMemo, useState } from "react";
 
-import { calculateQuote, getCalculatorOptions, getHealth } from "./api/calculatorApi";
+import { fetchCatalog, fetchHealth, requestQuote } from "../../services/api.js";
 import { CalculatorForm } from "./components/CalculatorForm";
 import { QuoteResult } from "./components/QuoteResult";
-import type {
-  CalculatorCombination,
-  CalculatorProductOptions,
-  Color,
-  Paper,
-  Qty,
-  QuoteResponse,
-  Size,
-} from "../../types";
+import type { CalculatorCatalogResponse, CatalogCombination, CatalogProduct, QuoteResponse } from "../../types";
 
-function uniqueValues<T>(items: T[]): T[] {
-  return Array.from(new Set(items));
+function uniqueStrings(values: string[]): string[] {
+  return Array.from(new Set(values));
+}
+
+function uniqueNumbers(values: number[]): number[] {
+  return Array.from(new Set(values));
+}
+
+function filterCombinations(
+  combos: CatalogCombination[],
+  selected: { size: string; paper: string; color: string; qty: number }
+): CatalogCombination[] {
+  return combos.filter((combo) => {
+    if (selected.size && combo.size !== selected.size) return false;
+    if (selected.paper && combo.paper !== selected.paper) return false;
+    if (selected.color && combo.color !== selected.color) return false;
+    if (selected.qty > 0 && combo.quantity !== selected.qty) return false;
+    return true;
+  });
+}
+
+function allowedSizes(product: CatalogProduct | null): string[] {
+  if (!product) return [];
+  if (product.product_code === "business_card") {
+    return ["90x50"];
+  }
+  return product.options.sizes;
 }
 
 export function CalculatorFeature() {
-  const [size, setSize] = useState<Size>("A6");
-  const [paper, setPaper] = useState<Paper>("130g");
-  const [color, setColor] = useState<Color>("1+0");
-  const [qty, setQty] = useState<Qty>(100);
-  const [lamination, setLamination] = useState(false);
-
-  const [catalog, setCatalog] = useState<CalculatorProductOptions | null>(null);
+  const [catalog, setCatalog] = useState<CalculatorCatalogResponse | null>(null);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState<string | null>(null);
+
+  const [productSlug, setProductSlug] = useState("");
+  const [size, setSize] = useState("");
+  const [paper, setPaper] = useState("");
+  const [color, setColor] = useState("");
+  const [qty, setQty] = useState(0);
+  const [lamination, setLamination] = useState(false);
 
   const [quote, setQuote] = useState<QuoteResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -44,8 +62,8 @@ export function CalculatorFeature() {
   useEffect(() => {
     let isMounted = true;
 
-    getHealth()
-      .then((result) => {
+    fetchHealth()
+      .then((result: { status?: string }) => {
         if (isMounted) {
           setHealthStatus(result.status ?? "rendben");
         }
@@ -66,22 +84,18 @@ export function CalculatorFeature() {
     setCatalogLoading(true);
     setCatalogError(null);
 
-    getCalculatorOptions()
-      .then((result) => {
+    fetchCatalog()
+      .then((result: CalculatorCatalogResponse) => {
         if (!isMounted) return;
+        setCatalog(result as CalculatorCatalogResponse);
 
-        const flyer = result.products.find((product) => product.product_code === "flyer") ?? null;
-        setCatalog(flyer);
-
-        if (!flyer) {
-          setCatalogError("Nem érhetőek el a kalkulátor opciók.");
+        const firstProduct = result.products[0];
+        if (!firstProduct) {
+          setCatalogError("Nincs elérhető termék a kalkulátorhoz.");
           return;
         }
 
-        if (flyer.options.size.length > 0) setSize(flyer.options.size[0]);
-        if (flyer.options.paper.length > 0) setPaper(flyer.options.paper[0]);
-        if (flyer.options.color.length > 0) setColor(flyer.options.color[0]);
-        if (flyer.options.qty.length > 0) setQty(flyer.options.qty[0]);
+        setProductSlug(firstProduct.slug);
       })
       .catch(() => {
         if (isMounted) {
@@ -100,77 +114,115 @@ export function CalculatorFeature() {
     };
   }, []);
 
-  const validCombinations = useMemo<CalculatorCombination[]>(() => {
-    return catalog?.valid_combinations ?? [];
-  }, [catalog]);
+  const products = catalog?.products ?? [];
 
-  const availableSizes = useMemo<Size[]>(() => {
-    return uniqueValues(
-      validCombinations
-        .filter((combo) => combo.paper === paper && combo.color === color && combo.qty === qty)
-        .map((combo) => combo.size)
-    );
-  }, [validCombinations, paper, color, qty]);
+  const selectedProduct = useMemo<CatalogProduct | null>(() => {
+    if (!products.length) return null;
+    return products.find((product) => product.slug === productSlug) ?? products[0];
+  }, [products, productSlug]);
 
-  const availablePapers = useMemo<Paper[]>(() => {
-    return uniqueValues(
-      validCombinations
-        .filter((combo) => combo.size === size && combo.color === color && combo.qty === qty)
-        .map((combo) => combo.paper)
-    );
-  }, [validCombinations, size, color, qty]);
+  const productOptions = useMemo(
+    () => products.map((product) => ({ slug: product.slug, name: product.name })),
+    [products]
+  );
 
-  const availableColors = useMemo<Color[]>(() => {
-    return uniqueValues(
-      validCombinations
-        .filter((combo) => combo.size === size && combo.paper === paper && combo.qty === qty)
-        .map((combo) => combo.color)
-    );
-  }, [validCombinations, size, paper, qty]);
+  const combinations = useMemo<CatalogCombination[]>(() => {
+    return selectedProduct?.validCombinations ?? [];
+  }, [selectedProduct]);
 
-  const availableQtys = useMemo<Qty[]>(() => {
-    return uniqueValues(
-      validCombinations
-        .filter((combo) => combo.size === size && combo.paper === paper && combo.color === color)
-        .map((combo) => combo.qty)
-    );
-  }, [validCombinations, size, paper, color]);
+  const sizeBase = useMemo(() => allowedSizes(selectedProduct), [selectedProduct]);
+
+  const sizeOptions = useMemo(() => {
+    if (!selectedProduct) return [];
+    if (!combinations.length) return sizeBase;
+
+    const filtered = filterCombinations(combinations, { size: "", paper, color, qty });
+    const dynamic = uniqueStrings(filtered.map((combo) => combo.size));
+
+    if (selectedProduct.product_code === "business_card") return ["90x50"];
+    return dynamic.length ? dynamic : sizeBase;
+  }, [selectedProduct, combinations, sizeBase, paper, color, qty]);
+
+  const paperOptions = useMemo(() => {
+    if (!selectedProduct) return [];
+    if (!combinations.length) return selectedProduct.options.papers;
+
+    const filtered = filterCombinations(combinations, { size, paper: "", color, qty });
+    const dynamic = uniqueStrings(filtered.map((combo) => combo.paper));
+    return dynamic.length ? dynamic : selectedProduct.options.papers;
+  }, [selectedProduct, combinations, size, color, qty]);
+
+  const colorOptions = useMemo(() => {
+    if (!selectedProduct) return [];
+    if (!combinations.length) return selectedProduct.options.colors;
+
+    const filtered = filterCombinations(combinations, { size, paper, color: "", qty });
+    const dynamic = uniqueStrings(filtered.map((combo) => combo.color));
+    return dynamic.length ? dynamic : selectedProduct.options.colors;
+  }, [selectedProduct, combinations, size, paper, qty]);
+
+  const qtyOptions = useMemo(() => {
+    if (!selectedProduct) return [];
+    if (!combinations.length) return selectedProduct.options.quantities;
+
+    const filtered = filterCombinations(combinations, { size, paper, color, qty: 0 });
+    const dynamic = uniqueNumbers(filtered.map((combo) => combo.quantity));
+    return dynamic.length ? dynamic : selectedProduct.options.quantities;
+  }, [selectedProduct, combinations, size, paper, color]);
 
   useEffect(() => {
-    if (availableSizes.length > 0 && !availableSizes.includes(size)) {
-      setSize(availableSizes[0]);
-    }
-  }, [availableSizes, size]);
+    if (!selectedProduct) return;
+    setQuote(null);
+
+    const initialSizes = allowedSizes(selectedProduct);
+    const nextSize = initialSizes[0] ?? "";
+    const nextPaper = selectedProduct.options.papers[0] ?? "";
+    const nextColor = selectedProduct.options.colors[0] ?? "";
+    const nextQty = selectedProduct.options.quantities[0] ?? 0;
+
+    setSize(nextSize);
+    setPaper(nextPaper);
+    setColor(nextColor);
+    setQty(nextQty);
+  }, [selectedProduct?.slug]);
 
   useEffect(() => {
-    if (availablePapers.length > 0 && !availablePapers.includes(paper)) {
-      setPaper(availablePapers[0]);
+    if (sizeOptions.length && !sizeOptions.includes(size)) {
+      setSize(sizeOptions[0]);
     }
-  }, [availablePapers, paper]);
+  }, [sizeOptions, size]);
 
   useEffect(() => {
-    if (availableColors.length > 0 && !availableColors.includes(color)) {
-      setColor(availableColors[0]);
+    if (paperOptions.length && !paperOptions.includes(paper)) {
+      setPaper(paperOptions[0]);
     }
-  }, [availableColors, color]);
+  }, [paperOptions, paper]);
 
   useEffect(() => {
-    if (availableQtys.length > 0 && !availableQtys.includes(qty)) {
-      setQty(availableQtys[0]);
+    if (colorOptions.length && !colorOptions.includes(color)) {
+      setColor(colorOptions[0]);
     }
-  }, [availableQtys, qty]);
+  }, [colorOptions, color]);
+
+  useEffect(() => {
+    if (qtyOptions.length && !qtyOptions.includes(qty)) {
+      setQty(qtyOptions[0]);
+    }
+  }, [qtyOptions, qty]);
 
   const hasPriceForSelection = useMemo(() => {
-    return validCombinations.some(
+    return combinations.some(
       (combo) =>
-        combo.size === size && combo.paper === paper && combo.color === color && combo.qty === qty
+        combo.size === size && combo.paper === paper && combo.color === color && combo.quantity === qty
     );
-  }, [validCombinations, size, paper, color, qty]);
+  }, [combinations, size, paper, color, qty]);
+
+  const canCalculate = !!selectedProduct && hasPriceForSelection;
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!hasPriceForSelection || catalogLoading || catalogError) {
+    if (!canCalculate || catalogLoading || catalogError) {
       return;
     }
 
@@ -178,8 +230,17 @@ export function CalculatorFeature() {
     setError(null);
 
     try {
-      const response = await calculateQuote({ size, paper, color, qty, lamination });
-      setQuote(response);
+      const payload = {
+        product_code: selectedProduct?.product_code,
+        size,
+        paper,
+        color,
+        qty,
+        lamination,
+      };
+
+      const response = await requestQuote(payload);
+      setQuote(response as QuoteResponse);
     } catch {
       setError("Váratlan hiba történt.");
       setQuote(null);
@@ -188,7 +249,7 @@ export function CalculatorFeature() {
     }
   }
 
-  const submitDisabled = catalogLoading || !!catalogError || !hasPriceForSelection;
+  const submitDisabled = catalogLoading || !!catalogError || !canCalculate;
 
   return (
     <main className="page">
@@ -203,19 +264,22 @@ export function CalculatorFeature() {
         {catalogLoading && <p>Betöltés...</p>}
         {catalogError && <p className="error">{catalogError}</p>}
 
-        {!catalogLoading && !catalogError && (
+        {!catalogLoading && !catalogError && selectedProduct && (
           <CalculatorForm
+            productSlug={productSlug}
+            productOptions={productOptions}
             size={size}
             paper={paper}
             color={color}
             qty={qty}
-            sizeOptions={availableSizes}
-            paperOptions={availablePapers}
-            colorOptions={availableColors}
-            qtyOptions={availableQtys}
+            sizeOptions={sizeOptions}
+            paperOptions={paperOptions}
+            colorOptions={colorOptions}
+            qtyOptions={qtyOptions}
             lamination={lamination}
             loading={loading}
             submitDisabled={submitDisabled}
+            onProductChange={setProductSlug}
             onSizeChange={setSize}
             onPaperChange={setPaper}
             onColorChange={setColor}
@@ -225,8 +289,8 @@ export function CalculatorFeature() {
           />
         )}
 
-        {!catalogLoading && !catalogError && !hasPriceForSelection && (
-          <p className="error">Nincs ár a kiválasztott kombinációra.</p>
+        {!catalogLoading && !catalogError && !canCalculate && (
+          <p className="error">Nincs beállított ár ehhez a kombinációhoz.</p>
         )}
 
         {error && <p className="error">{error}</p>}

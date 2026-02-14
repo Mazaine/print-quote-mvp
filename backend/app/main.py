@@ -1,12 +1,14 @@
 ﻿from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from sqlmodel import Session
 
 from .db import engine, init_db
-from .models import QuoteRequest, QuoteResponse
+from .models import BreakdownItem, QuoteRequest, QuoteResponse
 from .pricing import calculate_quote
 from .pricing_service import (
-    get_calculator_options,
+    calculate_anchor_quote,
+    get_catalog,
     seed_anchor_prices,
     seed_product_specs,
     seed_sheet_prices,
@@ -42,6 +44,88 @@ def startup() -> None:
 
 app.include_router(admin_router)
 
+SURCHARGE_PAPER_170G = 900
+SURCHARGE_COLOR_4_0 = 1500
+SURCHARGE_COLOR_4_4 = 3000
+SURCHARGE_LAMINATION = 2000
+MIN_PRICE = 5000
+
+PRINT_PRODUCTS = [
+    {
+        "id": "flyer-a5",
+        "slug": "szorolap-a5",
+        "name": "Szórólap A5",
+        "description": "Kétoldalas promóciós szórólap rövid határidővel.",
+        "product_code": "flyer",
+        "basePrice": 8900,
+    },
+    {
+        "id": "poster-a3",
+        "slug": "poszter-a3",
+        "name": "Poszter A3",
+        "description": "Élénk színes poszter üzletekbe és rendezvényekre.",
+        "product_code": "poster",
+        "basePrice": 6900,
+    },
+    {
+        "id": "business-card-classic",
+        "slug": "nevjegykartya-90x50",
+        "name": "Névjegykártya 90x50",
+        "description": "Klasszikus névjegy matt vagy fényes kivitelben.",
+        "product_code": "business_card",
+        "basePrice": 4900,
+    },
+    {
+        "id": "sticker-sheet",
+        "slug": "matrica-iv",
+        "name": "Matrica ív",
+        "description": "Egyedi formájú, beltéri felhasználásra.",
+        "product_code": "sticker",
+        "basePrice": 5900,
+    },
+    {
+        "id": "rollup-standard",
+        "slug": "rollup-85x200",
+        "name": "Roll-up 85x200",
+        "description": "Kiállításokra és bemutatókra kész roll-up rendszer.",
+        "product_code": "rollup",
+        "basePrice": 24900,
+    },
+    {
+        "id": "brochure-a4",
+        "slug": "brossura-a4",
+        "name": "Brossúra A4 hajtott",
+        "description": "Termékbemutatókhoz és árlistákhoz ideális.",
+        "product_code": "brochure",
+        "basePrice": 15900,
+    },
+    {
+        "id": "booklet-a5",
+        "slug": "fuzet-a5",
+        "name": "Füzet A5",
+        "description": "Kisebb oldalszámú promóciós füzet.",
+        "product_code": "booklet",
+        "basePrice": 19900,
+    },
+    {
+        "id": "banner-custom",
+        "slug": "molino-egyedi",
+        "name": "Molinó egyedi méret",
+        "description": "Időjárásálló kültéri reklámfelület.",
+        "product_code": "banner",
+        "basePrice": 12900,
+    },
+]
+
+
+class ProductPriceRequest(BaseModel):
+    product_code: str
+    size: str
+    paper: str
+    color: str
+    qty: int
+    lamination: bool = False
+
 
 @app.get("/health")
 def health():
@@ -50,126 +134,55 @@ def health():
 
 @app.get("/products")
 def list_products():
-    return [
-        {
-            "id": "flyer-a5",
-            "name": "Szórólap A5",
-            "description": "Kétoldalas promóciós szórólap rövid határidővel.",
-            "product_code": "flyer",
-            "basePrice": 8900,
-            "options": {
-                "size": ["A6", "A5", "A4"],
-                "paper": ["Papír 130g", "Papír 170g"],
-                "quantity": [100, 250, 500, 1000],
-                "sides": ["1+0", "4+0", "4+4"],
-                "extras": ["Laminálás"]
-            }
-        },
-        {
-            "id": "poster-a3",
-            "name": "Poszter A3",
-            "description": "Élénk színes poszter üzletekbe és rendezvényekre.",
-            "product_code": "poster",
-            "basePrice": 6900,
-            "options": {
-                "size": ["A3", "A2"],
-                "paper": ["Papír 170g", "Papír 200g"],
-                "quantity": [10, 25, 50, 100],
-                "sides": ["4+0", "4+4"],
-                "extras": ["UV lakkozás"]
-            }
-        },
-        {
-            "id": "business-card-classic",
-            "name": "Névjegykártya 90x50",
-            "description": "Klasszikus névjegy matt vagy fényes kivitelben.",
-            "product_code": "business_card",
-            "basePrice": 4900,
-            "options": {
-                "size": ["90x50 mm"],
-                "paper": ["Papír 300g", "Papír 350g"],
-                "quantity": [100, 250, 500, 1000],
-                "sides": ["4+0", "4+4"],
-                "extras": ["Laminálás", "Sarokkerekítés"]
-            }
-        },
-        {
-            "id": "sticker-sheet",
-            "name": "Matrica ív",
-            "description": "Egyedi formájú, beltéri felhasználásra.",
-            "product_code": "sticker",
-            "basePrice": 5900,
-            "options": {
-                "size": ["A6", "A5", "A4"],
-                "paper": ["Öntapadó papír", "Öntapadó fólia"],
-                "quantity": [50, 100, 250, 500],
-                "sides": ["4+0"],
-                "extras": ["Kontúrvágás"]
-            }
-        },
-        {
-            "id": "rollup-standard",
-            "name": "Roll-up 85x200",
-            "description": "Kiállításokra és bemutatókra kész roll-up rendszer.",
-            "product_code": "rollup",
-            "basePrice": 24900,
-            "options": {
-                "size": ["85x200 cm", "100x200 cm"],
-                "paper": ["PVC banner", "Prémium film"],
-                "quantity": [1, 2, 5, 10],
-                "sides": ["4+0"],
-                "extras": ["Hordtáska"]
-            }
-        },
-        {
-            "id": "brochure-a4",
-            "name": "Brossúra A4 hajtott",
-            "description": "Termékbemutatókhoz és árlistákhoz ideális.",
-            "product_code": "brochure",
-            "basePrice": 15900,
-            "options": {
-                "size": ["A4", "A5"],
-                "paper": ["Papír 135g", "Papír 170g"],
-                "quantity": [100, 250, 500],
-                "sides": ["4+4"],
-                "extras": ["Tűzés", "Hajtás"]
-            }
-        },
-        {
-            "id": "booklet-a5",
-            "name": "Füzet A5",
-            "description": "Kisebb oldalszámú promóciós füzet.",
-            "product_code": "booklet",
-            "basePrice": 19900,
-            "options": {
-                "size": ["A5"],
-                "paper": ["Papír 115g", "Papír 135g"],
-                "quantity": [100, 250, 500],
-                "sides": ["4+4"],
-                "extras": ["Tűzés", "Laminálás"]
-            }
-        },
-        {
-            "id": "banner-custom",
-            "name": "Molinó egyedi méret",
-            "description": "Időjárásálló kültéri reklámfelület.",
-            "product_code": "banner",
-            "basePrice": 12900,
-            "options": {
-                "size": ["egyedi"],
-                "paper": ["PVC 440g", "Mesh"],
-                "quantity": [1, 2, 5, 10],
-                "sides": ["4+0"],
-                "extras": ["Ringlizés", "Hegesztett szél"]
-            }
-        }
-    ]
+    return PRINT_PRODUCTS
 
 
-@app.get("/calculator/options")
-def calculator_options():
+@app.get("/catalog")
+def catalog():
     with Session(engine) as session:
-        return get_calculator_options(session)
+        return get_catalog(session, PRINT_PRODUCTS)
+
+
+@app.post("/price/calculate", response_model=QuoteResponse)
+def price_calculate(payload: ProductPriceRequest):
+    with Session(engine) as session:
+        resolved_qty, anchor = calculate_anchor_quote(
+            session,
+            product_code=payload.product_code,
+            size_key=payload.size,
+            material_code=payload.paper,
+            qty=payload.qty,
+        )
+
+    breakdown = [
+        BreakdownItem(
+            label=f"Anchor - {payload.product_code} / {payload.size} / {resolved_qty} db",
+            amount=anchor,
+        )
+    ]
+    total = anchor
+
+    if payload.paper == "170g":
+        total += SURCHARGE_PAPER_170G
+        breakdown.append(BreakdownItem(label="Papír felár: 170g", amount=SURCHARGE_PAPER_170G))
+
+    if payload.color == "4+0":
+        total += SURCHARGE_COLOR_4_0
+        breakdown.append(BreakdownItem(label="Szín felár: 4+0", amount=SURCHARGE_COLOR_4_0))
+    elif payload.color == "4+4":
+        total += SURCHARGE_COLOR_4_4
+        breakdown.append(BreakdownItem(label="Szín felár: 4+4", amount=SURCHARGE_COLOR_4_4))
+
+    if payload.lamination:
+        total += SURCHARGE_LAMINATION
+        breakdown.append(BreakdownItem(label="Fóliázás felár", amount=SURCHARGE_LAMINATION))
+
+    if total < MIN_PRICE:
+        adjust = MIN_PRICE - total
+        total = MIN_PRICE
+        breakdown.append(BreakdownItem(label="Minimum ár korrekció", amount=adjust))
+
+    return QuoteResponse(final_price=total, currency="HUF", breakdown=breakdown)
 
 
 @app.post("/quote/calculate", response_model=QuoteResponse)

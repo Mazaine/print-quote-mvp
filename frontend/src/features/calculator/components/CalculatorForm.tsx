@@ -1,26 +1,29 @@
-﻿import type { Color, Paper, Qty, Size } from "../../../types";
-
-interface CalculatorFormProps {
-  size: Size;
-  paper: Paper;
-  color: Color;
-  qty: Qty;
-  sizeOptions: Size[];
-  paperOptions: Paper[];
-  colorOptions: Color[];
-  qtyOptions: Qty[];
+﻿interface CalculatorFormProps {
+  productSlug: string;
+  productOptions: Array<{ slug: string; name: string }>;
+  size: string;
+  paper: string;
+  color: string;
+  qty: number;
+  sizeOptions: string[];
+  paperOptions: string[];
+  colorOptions: string[];
+  qtyOptions: number[];
   lamination: boolean;
   loading: boolean;
   submitDisabled: boolean;
-  onSizeChange: (value: Size) => void;
-  onPaperChange: (value: Paper) => void;
-  onColorChange: (value: Color) => void;
-  onQtyChange: (value: Qty) => void;
+  onProductChange: (value: string) => void;
+  onSizeChange: (value: string) => void;
+  onPaperChange: (value: string) => void;
+  onColorChange: (value: string) => void;
+  onQtyChange: (value: number) => void;
   onLaminationChange: (value: boolean) => void;
   onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
 }
 
 export function CalculatorForm({
+  productSlug,
+  productOptions,
   size,
   paper,
   color,
@@ -32,6 +35,7 @@ export function CalculatorForm({
   lamination,
   loading,
   submitDisabled,
+  onProductChange,
   onSizeChange,
   onPaperChange,
   onColorChange,
@@ -42,8 +46,19 @@ export function CalculatorForm({
   return (
     <form className="form-grid" onSubmit={onSubmit}>
       <label>
+        <span>Termék</span>
+        <select value={productSlug} onChange={(event) => onProductChange(event.target.value)}>
+          {productOptions.map((option) => (
+            <option key={option.slug} value={option.slug}>
+              {option.name}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label>
         <span>Méret</span>
-        <select value={size} onChange={(event) => onSizeChange(event.target.value as Size)}>
+        <select value={size} onChange={(event) => onSizeChange(event.target.value)}>
           {sizeOptions.map((option) => (
             <option key={option} value={option}>
               {option}
@@ -54,7 +69,7 @@ export function CalculatorForm({
 
       <label>
         <span>Papír</span>
-        <select value={paper} onChange={(event) => onPaperChange(event.target.value as Paper)}>
+        <select value={paper} onChange={(event) => onPaperChange(event.target.value)}>
           {paperOptions.map((option) => (
             <option key={option} value={option}>
               {option}
@@ -65,7 +80,7 @@ export function CalculatorForm({
 
       <label>
         <span>Szín</span>
-        <select value={color} onChange={(event) => onColorChange(event.target.value as Color)}>
+        <select value={color} onChange={(event) => onColorChange(event.target.value)}>
           {colorOptions.map((option) => (
             <option key={option} value={option}>
               {option}
@@ -76,7 +91,7 @@ export function CalculatorForm({
 
       <label>
         <span>Mennyiség</span>
-        <select value={qty} onChange={(event) => onQtyChange(Number(event.target.value) as Qty)}>
+        <select value={qty} onChange={(event) => onQtyChange(Number(event.target.value))}>
           {qtyOptions.map((option) => (
             <option key={option} value={option}>
               {option}

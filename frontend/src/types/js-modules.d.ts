@@ -7,4 +7,7 @@ declare module "*.js" {
   const value: any;
   export default value;
   export const fetchProducts: any;
+  export const fetchCatalog: any;
+  export const fetchHealth: any;
+  export const requestQuote: any;
 }

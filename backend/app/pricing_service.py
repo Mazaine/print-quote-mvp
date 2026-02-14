@@ -14,11 +14,7 @@ FLYER_SIZE_MM: dict[str, tuple[int, int]] = {
 
 
 def seed_anchor_prices(session: Session) -> int:
-    has_any = session.exec(select(AnchorPrice.id).limit(1)).first()
-    if has_any is not None:
-        return 0
-
-    rows = [
+    defaults = [
         AnchorPrice(product_code="banner", material_code="vinyl", size_key="custom", anchor_qty=1, anchor_price=3500.0),
         AnchorPrice(product_code="banner", material_code="vinyl", size_key="custom", anchor_qty=10, anchor_price=28000.0),
         AnchorPrice(product_code="banner", material_code="vinyl", size_key="custom", anchor_qty=50, anchor_price=120000.0),
@@ -43,11 +39,41 @@ def seed_anchor_prices(session: Session) -> int:
         AnchorPrice(product_code="flyer", material_code="130g", size_key="A4", anchor_qty=250, anchor_price=14000.0),
         AnchorPrice(product_code="flyer", material_code="130g", size_key="A4", anchor_qty=500, anchor_price=19000.0),
         AnchorPrice(product_code="flyer", material_code="130g", size_key="A4", anchor_qty=1000, anchor_price=27000.0),
+        AnchorPrice(product_code="business_card", material_code="300g", size_key="90x50", anchor_qty=100, anchor_price=4900.0),
+        AnchorPrice(product_code="business_card", material_code="300g", size_key="90x50", anchor_qty=250, anchor_price=6900.0),
+        AnchorPrice(product_code="business_card", material_code="300g", size_key="90x50", anchor_qty=500, anchor_price=9900.0),
+        AnchorPrice(product_code="business_card", material_code="300g", size_key="90x50", anchor_qty=1000, anchor_price=15900.0),
+        AnchorPrice(product_code="rollup", material_code="PVC banner", size_key="85x200", anchor_qty=1, anchor_price=24900.0),
+        AnchorPrice(product_code="rollup", material_code="PVC banner", size_key="85x200", anchor_qty=2, anchor_price=47900.0),
+        AnchorPrice(product_code="rollup", material_code="PVC banner", size_key="85x200", anchor_qty=5, anchor_price=114900.0),
+        AnchorPrice(product_code="rollup", material_code="PVC banner", size_key="85x200", anchor_qty=10, anchor_price=219900.0),
+        AnchorPrice(product_code="brochure", material_code="135g", size_key="A4", anchor_qty=100, anchor_price=15900.0),
+        AnchorPrice(product_code="brochure", material_code="135g", size_key="A4", anchor_qty=250, anchor_price=29900.0),
+        AnchorPrice(product_code="brochure", material_code="135g", size_key="A4", anchor_qty=500, anchor_price=54900.0),
+        AnchorPrice(product_code="booklet", material_code="115g", size_key="A5", anchor_qty=100, anchor_price=19900.0),
+        AnchorPrice(product_code="booklet", material_code="115g", size_key="A5", anchor_qty=250, anchor_price=36900.0),
+        AnchorPrice(product_code="booklet", material_code="115g", size_key="A5", anchor_qty=500, anchor_price=67900.0),
     ]
 
-    session.add_all(rows)
-    session.commit()
-    return len(rows)
+    inserted = 0
+    for row in defaults:
+        existing = session.exec(
+            select(AnchorPrice)
+            .where(AnchorPrice.product_code == row.product_code)
+            .where(AnchorPrice.material_code == row.material_code)
+            .where(AnchorPrice.size_key == row.size_key)
+            .where(AnchorPrice.anchor_qty == row.anchor_qty)
+        ).first()
+        if existing is not None:
+            continue
+
+        session.add(row)
+        inserted += 1
+
+    if inserted:
+        session.commit()
+
+    return inserted
 
 
 def seed_sra3(session: Session) -> int:
@@ -302,3 +328,88 @@ def get_calculator_options(session: Session) -> dict:
             }
         ]
     }
+
+
+def get_catalog(session: Session, products: list[dict]) -> dict:
+    anchor_rows = session.exec(
+        select(AnchorPrice).order_by(
+            AnchorPrice.product_code,
+            AnchorPrice.size_key,
+            AnchorPrice.material_code,
+            AnchorPrice.anchor_qty,
+        )
+    ).all()
+    print_modes = session.exec(select(SheetPrice.print_mode).distinct()).all()
+    colors = sorted(print_modes) if print_modes else ["1+0", "4+0", "4+4"]
+
+    by_product: dict[str, list[AnchorPrice]] = {}
+    for row in anchor_rows:
+        by_product.setdefault(row.product_code, []).append(row)
+
+    catalog_products = []
+    for product in products:
+        product_code = product["product_code"]
+        rows = by_product.get(product_code, [])
+
+        if product_code == "business_card":
+            sizes = ["90x50"]
+        else:
+            sizes = sorted({row.size_key for row in rows})
+
+        papers = sorted({row.material_code for row in rows})
+        quantities = sorted({int(row.anchor_qty) for row in rows})
+
+        combinations = []
+        for row in rows:
+            size_value = "90x50" if product_code == "business_card" else row.size_key
+            for color in colors:
+                combinations.append(
+                    {
+                        "size": size_value,
+                        "paper": row.material_code,
+                        "quantity": int(row.anchor_qty),
+                        "color": color,
+                    }
+                )
+
+        catalog_products.append(
+            {
+                "id": product["id"],
+                "slug": product["slug"],
+                "name": product["name"],
+                "description": product["description"],
+                "basePrice": product["basePrice"],
+                "product_code": product_code,
+                "options": {
+                    "sizes": sizes,
+                    "papers": papers,
+                    "quantities": quantities,
+                    "colors": colors if rows else [],
+                },
+                "validCombinations": combinations,
+            }
+        )
+
+    return {"products": catalog_products}
+
+
+def calculate_anchor_quote(
+    session: Session,
+    product_code: str,
+    size_key: str,
+    material_code: str,
+    qty: int,
+) -> tuple[int, int]:
+    anchor_map = get_anchor_map(
+        session,
+        product_code=product_code,
+        material_code=material_code,
+        size_key=size_key,
+    )
+    if not anchor_map:
+        raise ValueError(
+            f"No anchor price for product={product_code} material={material_code} size={size_key}"
+        )
+
+    resolved_qty, anchor_price = resolve_anchor_price(anchor_map, qty)
+    return resolved_qty, int(round(anchor_price))
