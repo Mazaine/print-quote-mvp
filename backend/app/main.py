@@ -1,8 +1,11 @@
-﻿from fastapi import FastAPI, HTTPException
+﻿from pathlib import Path
+import uuid
+
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlmodel import Session
-import uuid
 
 from .db import engine, init_db
 from .models import BreakdownItem, QuoteRequest, QuoteResponse
@@ -20,6 +23,12 @@ from .schemas.quote import QuoteCreateRequest, QuoteCreateResponse
 
 app = FastAPI(title="print-quote-mvp", version="0.1.0")
 
+UPLOAD_DIR = Path("uploads")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+MAX_UPLOAD_SIZE = 20 * 1024 * 1024
+ALLOWED_MIME_TYPES = {"application/pdf", "image/jpeg", "image/png"}
+ALLOWED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png"}
+
 origins = [
     "http://localhost:5173",
     "http://localhost:3000",
@@ -32,6 +41,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 
 @app.on_event("startup")
@@ -221,3 +231,39 @@ def create_quote(payload: QuoteCreateRequest):
     quote_id = str(uuid.uuid4())
     quotes.append({"id": quote_id, **payload.model_dump()})
     return QuoteCreateResponse(message="Ajánlatkérés rögzítve", id=quote_id)
+
+
+@app.post("/upload")
+async def upload(file: UploadFile = File(...)):
+    original_name = file.filename or "unknown"
+    content_type = file.content_type or "application/octet-stream"
+    extension = Path(original_name).suffix.lower()
+
+    if content_type not in ALLOWED_MIME_TYPES and extension not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="Csak PDF/JPG/PNG engedélyezett")
+
+    content = await file.read()
+    size = len(content)
+
+    if size > MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=400, detail="Túl nagy fájl (max 20MB)")
+
+    if extension not in ALLOWED_EXTENSIONS:
+        extension = {
+            "application/pdf": ".pdf",
+            "image/jpeg": ".jpg",
+            "image/png": ".png",
+        }.get(content_type, "")
+
+    file_id = str(uuid.uuid4())
+    stored_name = f"{file_id}{extension}"
+    (UPLOAD_DIR / stored_name).write_bytes(content)
+
+    return {
+        "fileId": file_id,
+        "originalName": original_name,
+        "storedName": stored_name,
+        "size": size,
+        "contentType": content_type,
+        "url": f"/uploads/{stored_name}",
+    }

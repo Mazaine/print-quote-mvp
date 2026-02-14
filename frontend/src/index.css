@@ -323,3 +323,19 @@ pre {
 .quote-note {
   grid-column: 1 / -1;
 }
+
+.upload-section {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #dbe5ef;
+}
+
+.upload-section h3 {
+  margin: 0 0 10px;
+  font-size: 1rem;
+}
+
+.cart-item-file {
+  margin: 0 0 8px;
+  color: #1d3d5a;
+}

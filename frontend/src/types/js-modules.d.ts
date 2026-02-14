@@ -12,4 +12,5 @@ declare module "*.js" {
   export const fetchHealth: any;
   export const requestQuote: any;
   export const submitQuoteRequest: any;
+  export const uploadFile: any;
 }

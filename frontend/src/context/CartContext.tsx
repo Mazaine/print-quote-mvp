@@ -10,12 +10,21 @@ export interface CartItemSelections {
   extras?: string[];
 }
 
+export interface CartItemUpload {
+  fileId: string;
+  originalName: string;
+  url: string;
+  size: number;
+  contentType: string;
+}
+
 export interface CartItem {
   id: string;
   productSlug: string;
   productName: string;
   productImageUrl: string;
   selections: CartItemSelections;
+  upload?: CartItemUpload;
   unitPriceFt: number;
   lineTotalFt: number;
   createdAt: string;

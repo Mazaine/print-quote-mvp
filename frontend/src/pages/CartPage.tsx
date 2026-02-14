@@ -68,6 +68,14 @@ export function CartPage({ onGoProducts, onGoQuote }: CartPageProps) {
                   <div className="cart-item-content">
                     <h3>{item.productName}</h3>
                     <p className="cart-item-options">{formatSelections(item.selections)}</p>
+                    {item.upload && (
+                      <p className="cart-item-file">
+                        Fájl: {item.upload.originalName} ({Math.round(item.upload.size / 1024)} KB) -{" "}
+                        <a href={item.upload.url} target="_blank" rel="noreferrer">
+                          Megnyitás
+                        </a>
+                      </p>
+                    )}
                     <p className="cart-item-price">{formatHuf(item.lineTotalFt)}</p>
                     <button type="button" onClick={() => removeItem(item.id)}>
                       Törlés

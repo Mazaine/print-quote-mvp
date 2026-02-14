@@ -1,5 +1,11 @@
 ﻿const API_BASE = "http://127.0.0.1:8001";
 
+function toAbsoluteUrl(url) {
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `${API_BASE}${url}`;
+}
+
 export async function fetchProducts() {
   const response = await fetch(`${API_BASE}/products`);
 
@@ -62,4 +68,32 @@ export async function submitQuoteRequest(payload) {
   }
 
   return response.json();
+}
+
+export async function uploadFile(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const response = await fetch(`${API_BASE}/upload`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    let message = "Nem sikerült feltölteni a fájlt.";
+    try {
+      const err = await response.json();
+      message = err?.detail || message;
+    } catch {
+      const text = await response.text();
+      if (text) message = text;
+    }
+    throw new Error(message);
+  }
+
+  const data = await response.json();
+  return {
+    ...data,
+    url: toAbsoluteUrl(data.url),
+  };
 }
