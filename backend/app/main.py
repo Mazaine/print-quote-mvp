@@ -2,6 +2,7 @@
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlmodel import Session
+import uuid
 
 from .db import engine, init_db
 from .models import BreakdownItem, QuoteRequest, QuoteResponse
@@ -15,6 +16,7 @@ from .pricing_service import (
     seed_sra3,
 )
 from .routers.admin import router as admin_router
+from .schemas.quote import QuoteCreateRequest, QuoteCreateResponse
 
 app = FastAPI(title="print-quote-mvp", version="0.1.0")
 
@@ -135,6 +137,9 @@ class ProductPriceRequest(BaseModel):
     lamination: bool = False
 
 
+quotes: list[dict] = []
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -209,3 +214,10 @@ def quote_calculate(payload: QuoteRequest):
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     return QuoteResponse(final_price=final_price, currency="HUF", breakdown=breakdown)
+
+
+@app.post("/quote", response_model=QuoteCreateResponse)
+def create_quote(payload: QuoteCreateRequest):
+    quote_id = str(uuid.uuid4())
+    quotes.append({"id": quote_id, **payload.model_dump()})
+    return QuoteCreateResponse(message="Ajánlatkérés rögzítve", id=quote_id)

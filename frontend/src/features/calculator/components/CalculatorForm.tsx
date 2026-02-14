@@ -12,6 +12,7 @@
   lamination: boolean;
   loading: boolean;
   submitDisabled: boolean;
+  showProductSelect?: boolean;
   onProductChange: (value: string) => void;
   onSizeChange: (value: string) => void;
   onPaperChange: (value: string) => void;
@@ -35,6 +36,7 @@ export function CalculatorForm({
   lamination,
   loading,
   submitDisabled,
+  showProductSelect = true,
   onProductChange,
   onSizeChange,
   onPaperChange,
@@ -45,16 +47,18 @@ export function CalculatorForm({
 }: CalculatorFormProps) {
   return (
     <form className="form-grid" onSubmit={onSubmit}>
-      <label>
-        <span>Termék</span>
-        <select value={productSlug} onChange={(event) => onProductChange(event.target.value)}>
-          {productOptions.map((option) => (
-            <option key={option.slug} value={option.slug}>
-              {option.name}
-            </option>
-          ))}
-        </select>
-      </label>
+      {showProductSelect && (
+        <label>
+          <span>Termék</span>
+          <select value={productSlug} onChange={(event) => onProductChange(event.target.value)}>
+            {productOptions.map((option) => (
+              <option key={option.slug} value={option.slug}>
+                {option.name}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       <label>
         <span>Méret</span>

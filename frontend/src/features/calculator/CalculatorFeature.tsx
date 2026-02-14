@@ -5,9 +5,25 @@ import { CalculatorForm } from "./components/CalculatorForm";
 import { QuoteResult } from "./components/QuoteResult";
 import type { CalculatorCatalogResponse, CatalogCombination, CatalogProduct, QuoteResponse } from "../../types";
 
+export interface CalculatorQuoteSnapshot {
+  productSlug: string;
+  productName: string;
+  productImageUrl: string;
+  selections: {
+    size?: string;
+    paper?: string;
+    color?: string;
+    quantity?: number;
+    extras?: string[];
+  };
+  priceFt: number;
+}
+
 interface CalculatorFeatureProps {
   initialProductSlug?: string;
   embedded?: boolean;
+  locked?: boolean;
+  onQuoteChange?: (snapshot: CalculatorQuoteSnapshot | null) => void;
 }
 
 function uniqueStrings(values: string[]): string[] {
@@ -39,7 +55,12 @@ function allowedSizes(product: CatalogProduct | null): string[] {
   return product.options.sizes;
 }
 
-export function CalculatorFeature({ initialProductSlug, embedded = false }: CalculatorFeatureProps) {
+export function CalculatorFeature({
+  initialProductSlug,
+  embedded = false,
+  locked = false,
+  onQuoteChange,
+}: CalculatorFeatureProps) {
   const [catalog, setCatalog] = useState<CalculatorCatalogResponse | null>(null);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState<string | null>(null);
@@ -52,6 +73,7 @@ export function CalculatorFeature({ initialProductSlug, embedded = false }: Calc
   const [lamination, setLamination] = useState(false);
 
   const [quote, setQuote] = useState<QuoteResponse | null>(null);
+  const [lastSnapshot, setLastSnapshot] = useState<CalculatorQuoteSnapshot | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [healthStatus, setHealthStatus] = useState<string>("ellenőrzés...");
@@ -65,10 +87,24 @@ export function CalculatorFeature({ initialProductSlug, embedded = false }: Calc
   );
 
   useEffect(() => {
-    if (initialProductSlug) {
+    if (locked && initialProductSlug) {
       setProductSlug(initialProductSlug);
     }
-  }, [initialProductSlug]);
+  }, [locked, initialProductSlug]);
+
+  useEffect(() => {
+    if (!onQuoteChange) return;
+
+    if (quote && lastSnapshot) {
+      onQuoteChange({
+        ...lastSnapshot,
+        priceFt: quote.final_price,
+      });
+      return;
+    }
+
+    onQuoteChange(null);
+  }, [onQuoteChange, quote, lastSnapshot]);
 
   useEffect(() => {
     let isMounted = true;
@@ -106,6 +142,12 @@ export function CalculatorFeature({ initialProductSlug, embedded = false }: Calc
           return;
         }
 
+        if (locked && initialProductSlug) {
+          const exists = result.products.some((product) => product.slug === initialProductSlug);
+          setProductSlug(exists ? initialProductSlug : firstProduct.slug);
+          return;
+        }
+
         setProductSlug((current) => current || firstProduct.slug);
       })
       .catch(() => {
@@ -123,7 +165,7 @@ export function CalculatorFeature({ initialProductSlug, embedded = false }: Calc
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [locked, initialProductSlug]);
 
   const products = catalog?.products ?? [];
 
@@ -184,6 +226,7 @@ export function CalculatorFeature({ initialProductSlug, embedded = false }: Calc
   useEffect(() => {
     if (!selectedProduct) return;
     setQuote(null);
+    setLastSnapshot(null);
 
     const initialSizes = allowedSizes(selectedProduct);
     const nextSize = initialSizes[0] ?? "";
@@ -233,16 +276,30 @@ export function CalculatorFeature({ initialProductSlug, embedded = false }: Calc
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!canCalculate || catalogLoading || catalogError) {
+    if (!canCalculate || catalogLoading || catalogError || !selectedProduct) {
       return;
     }
 
     setLoading(true);
     setError(null);
 
+    const snapshotBase: CalculatorQuoteSnapshot = {
+      productSlug: selectedProduct.slug,
+      productName: selectedProduct.name,
+      productImageUrl: selectedProduct.imageUrl,
+      selections: {
+        size,
+        paper,
+        color,
+        quantity: qty,
+        extras: lamination ? ["Fóliázás"] : [],
+      },
+      priceFt: 0,
+    };
+
     try {
       const payload = {
-        product_code: selectedProduct?.product_code,
+        product_code: selectedProduct.product_code,
         size,
         paper,
         color,
@@ -252,9 +309,11 @@ export function CalculatorFeature({ initialProductSlug, embedded = false }: Calc
 
       const response = await requestQuote(payload);
       setQuote(response as QuoteResponse);
+      setLastSnapshot(snapshotBase);
     } catch {
       setError("Váratlan hiba történt.");
       setQuote(null);
+      setLastSnapshot(null);
     } finally {
       setLoading(false);
     }
@@ -282,7 +341,8 @@ export function CalculatorFeature({ initialProductSlug, embedded = false }: Calc
           lamination={lamination}
           loading={loading}
           submitDisabled={submitDisabled}
-          onProductChange={setProductSlug}
+          showProductSelect={!locked}
+          onProductChange={locked ? () => {} : setProductSlug}
           onSizeChange={setSize}
           onPaperChange={setPaper}
           onColorChange={setColor}

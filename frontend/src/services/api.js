@@ -48,3 +48,18 @@ export async function requestQuote(payload) {
 
   return response.json();
 }
+
+export async function submitQuoteRequest(payload) {
+  const response = await fetch(`${API_BASE}/quote`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    throw new Error(errorBody || "Nem sikerült elküldeni az ajánlatkérést.");
+  }
+
+  return response.json();
+}

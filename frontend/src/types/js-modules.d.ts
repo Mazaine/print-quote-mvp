@@ -11,4 +11,5 @@ declare module "*.js" {
   export const fetchCatalog: any;
   export const fetchHealth: any;
   export const requestQuote: any;
+  export const submitQuoteRequest: any;
 }
