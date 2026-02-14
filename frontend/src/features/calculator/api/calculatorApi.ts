@@ -1,7 +1,14 @@
-import type { QuoteRequest, QuoteResponse } from "./types";
+import type { QuoteRequest, QuoteResponse, CalculatorCatalogResponse } from "./types";
 
-export const API_BASE = "https://print-quote-mvp.onrender.com";
+export const API_BASE = import.meta.env.VITE_API_URL ?? "https://print-quote-mvp.onrender.com";
 
+/**
+ * Thin fetch wrapper so we can call relative API paths safely.
+ */
+async function http(path: string, init?: RequestInit): Promise<Response> {
+  const url = `${API_BASE}${path}`;
+  return fetch(url, init);
+}
 
 export async function getHealth(): Promise<{ status: string }> {
   const response = await http("/health");
@@ -15,9 +22,9 @@ export async function calculateQuote(payload: QuoteRequest): Promise<QuoteRespon
   const response = await http("/quote/calculate", {
     method: "POST",
     headers: {
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify(payload)
+    body: JSON.stringify(payload),
   });
 
   if (!response.ok) {
