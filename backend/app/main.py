@@ -6,6 +6,7 @@ from .db import engine, init_db
 from .models import QuoteRequest, QuoteResponse
 from .pricing import calculate_quote
 from .pricing_service import seed_anchor_prices
+from .routers.admin import router as admin_router
 
 app = FastAPI(title="print-quote-mvp", version="0.1.0")
 
@@ -28,6 +29,9 @@ def startup() -> None:
     init_db()
     with Session(engine) as session:
         seed_anchor_prices(session)
+
+
+app.include_router(admin_router)
 
 
 @app.get("/health")

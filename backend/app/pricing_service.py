@@ -3,6 +3,7 @@ from typing import Dict, Tuple
 from sqlmodel import Session, select
 
 from .models import AnchorPrice
+from .schemas.anchor import AnchorCreate, AnchorUpdate
 
 
 def seed_anchor_prices(session: Session) -> int:
@@ -40,6 +41,70 @@ def seed_anchor_prices(session: Session) -> int:
     session.add_all(rows)
     session.commit()
     return len(rows)
+
+
+def list_anchors(
+    session: Session,
+    product_code: str | None = None,
+    material_code: str | None = None,
+    size_key: str | None = None,
+    anchor_qty: int | None = None,
+) -> list[AnchorPrice]:
+    query = select(AnchorPrice)
+
+    if product_code:
+        query = query.where(AnchorPrice.product_code == product_code)
+    if material_code:
+        query = query.where(AnchorPrice.material_code == material_code)
+    if size_key:
+        query = query.where(AnchorPrice.size_key == size_key)
+    if anchor_qty is not None:
+        query = query.where(AnchorPrice.anchor_qty == anchor_qty)
+
+    query = query.order_by(
+        AnchorPrice.product_code,
+        AnchorPrice.material_code,
+        AnchorPrice.size_key,
+        AnchorPrice.anchor_qty,
+    )
+
+    return session.exec(query).all()
+
+
+def create_anchor(session: Session, payload: AnchorCreate) -> AnchorPrice:
+    anchor = AnchorPrice(**payload.model_dump())
+    session.add(anchor)
+    session.commit()
+    session.refresh(anchor)
+    return anchor
+
+
+def update_anchor(session: Session, anchor_id: int, payload: AnchorUpdate) -> AnchorPrice | None:
+    anchor = session.get(AnchorPrice, anchor_id)
+    if anchor is None:
+        return None
+
+    updates = payload.model_dump(exclude_unset=True)
+    if not updates:
+        raise ValueError("No fields to update")
+
+    for key, value in updates.items():
+        setattr(anchor, key, value)
+
+    session.add(anchor)
+    session.commit()
+    session.refresh(anchor)
+    return anchor
+
+
+def delete_anchor(session: Session, anchor_id: int) -> bool:
+    anchor = session.get(AnchorPrice, anchor_id)
+    if anchor is None:
+        return False
+
+    session.delete(anchor)
+    session.commit()
+    return True
 
 
 def get_anchor_map(
