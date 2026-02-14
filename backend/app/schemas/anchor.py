@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class AnchorCreate(BaseModel):
@@ -22,6 +22,8 @@ class AnchorUpdate(BaseModel):
 
 
 class AnchorRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     product_code: str
     material_code: str

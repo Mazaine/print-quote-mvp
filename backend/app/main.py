@@ -9,6 +9,7 @@ from sqlmodel import Session
 
 from .db import engine, init_db
 from .models import BreakdownItem, QuoteRequest, QuoteResponse
+from .order_store import create_order
 from .pricing import calculate_quote
 from .pricing_service import (
     calculate_anchor_quote,
@@ -147,9 +148,6 @@ class ProductPriceRequest(BaseModel):
     lamination: bool = False
 
 
-quotes: list[dict] = []
-
-
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -228,9 +226,8 @@ def quote_calculate(payload: QuoteRequest):
 
 @app.post("/quote", response_model=QuoteCreateResponse)
 def create_quote(payload: QuoteCreateRequest):
-    quote_id = str(uuid.uuid4())
-    quotes.append({"id": quote_id, **payload.model_dump()})
-    return QuoteCreateResponse(message="Ajánlatkérés rögzítve", id=quote_id)
+    order = create_order(payload.model_dump())
+    return QuoteCreateResponse(message="Ajánlatkérés rögzítve", id=order["id"])
 
 
 @app.post("/upload")

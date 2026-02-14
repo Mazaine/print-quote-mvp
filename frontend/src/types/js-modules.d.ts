@@ -13,4 +13,14 @@ declare module "*.js" {
   export const requestQuote: any;
   export const submitQuoteRequest: any;
   export const uploadFile: any;
+  export const fetchAnchors: any;
+  export const createAnchorPrice: any;
+  export const updateAnchorPrice: any;
+  export const deleteAnchorPrice: any;
+  export const bulkUpdateAnchorPrices: any;
+  export const bulkDeleteAnchorPrices: any;
+  export const fetchAdminOrders: any;
+  export const fetchAdminOrder: any;
+  export const updateAdminOrder: any;
+  export const bulkUpdateAdminOrderStatus: any;
 }

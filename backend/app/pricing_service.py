@@ -1,6 +1,7 @@
 import math
 from typing import Dict, Tuple
 
+from sqlalchemy import func, or_
 from sqlmodel import Session, select
 
 from .models import AnchorPrice, PrintSheet, ProductSpec, SheetPrice
@@ -218,6 +219,101 @@ def list_anchors(
     )
 
     return session.exec(query).all()
+
+
+def list_anchors_paginated(
+    session: Session,
+    page: int = 1,
+    page_size: int = 20,
+    product_code: str | None = None,
+    material_code: str | None = None,
+    size_key: str | None = None,
+    anchor_qty: int | None = None,
+    q: str | None = None,
+) -> tuple[list[AnchorPrice], int]:
+    base_query = select(AnchorPrice)
+    count_query = select(func.count()).select_from(AnchorPrice)
+
+    if product_code:
+        base_query = base_query.where(AnchorPrice.product_code == product_code)
+        count_query = count_query.where(AnchorPrice.product_code == product_code)
+    if material_code:
+        base_query = base_query.where(AnchorPrice.material_code == material_code)
+        count_query = count_query.where(AnchorPrice.material_code == material_code)
+    if size_key:
+        base_query = base_query.where(AnchorPrice.size_key == size_key)
+        count_query = count_query.where(AnchorPrice.size_key == size_key)
+    if anchor_qty is not None:
+        base_query = base_query.where(AnchorPrice.anchor_qty == anchor_qty)
+        count_query = count_query.where(AnchorPrice.anchor_qty == anchor_qty)
+    if q:
+        pattern = f"%{q.strip()}%"
+        criteria = or_(
+            AnchorPrice.product_code.like(pattern),
+            AnchorPrice.material_code.like(pattern),
+            AnchorPrice.size_key.like(pattern),
+        )
+        base_query = base_query.where(criteria)
+        count_query = count_query.where(criteria)
+
+    total = int(session.exec(count_query).one() or 0)
+    page = max(page, 1)
+    page_size = max(1, min(page_size, 100))
+    offset = (page - 1) * page_size
+
+    rows = session.exec(
+        base_query.order_by(
+            AnchorPrice.product_code,
+            AnchorPrice.material_code,
+            AnchorPrice.size_key,
+            AnchorPrice.anchor_qty,
+        )
+        .offset(offset)
+        .limit(page_size)
+    ).all()
+
+    return rows, total
+
+
+def bulk_update_anchor_prices(
+    session: Session, updates: list[dict[str, float | int]]
+) -> dict:
+    updated = 0
+    not_found_ids: list[int] = []
+
+    for item in updates:
+        anchor_id = int(item["id"])
+        price = float(item["priceFt"])
+        anchor = session.get(AnchorPrice, anchor_id)
+        if anchor is None:
+            not_found_ids.append(anchor_id)
+            continue
+        anchor.anchor_price = price
+        session.add(anchor)
+        updated += 1
+
+    if updated:
+        session.commit()
+
+    return {"updated": updated, "notFoundIds": not_found_ids}
+
+
+def bulk_delete_anchors(session: Session, ids: list[int]) -> dict:
+    deleted = 0
+    not_found_ids: list[int] = []
+
+    for anchor_id in ids:
+        anchor = session.get(AnchorPrice, int(anchor_id))
+        if anchor is None:
+            not_found_ids.append(int(anchor_id))
+            continue
+        session.delete(anchor)
+        deleted += 1
+
+    if deleted:
+        session.commit()
+
+    return {"deleted": deleted, "notFoundIds": not_found_ids}
 
 
 def create_anchor(session: Session, payload: AnchorCreate) -> AnchorPrice:
