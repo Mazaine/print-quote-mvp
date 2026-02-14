@@ -161,3 +161,33 @@ pre {
   overflow: auto;
   font-size: 0.85rem;
 }
+
+.product-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 14px;
+}
+
+.product-card {
+  border: 1px solid #dbe5ef;
+  border-radius: 12px;
+  padding: 14px;
+  background: #ffffff;
+}
+
+.product-card h3 {
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+}
+
+.product-description {
+  margin: 0 0 10px;
+  color: #4a5d6d;
+  min-height: 44px;
+}
+
+.product-price {
+  margin: 0;
+  font-weight: 700;
+  color: #083f82;
+}

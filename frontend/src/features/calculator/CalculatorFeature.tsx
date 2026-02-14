@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+﻿import { useEffect, useMemo, useState } from "react";
 
 import { calculateQuote, getHealth } from "./api/calculatorApi";
 import { CalculatorForm } from "./components/CalculatorForm";
@@ -15,7 +15,7 @@ export function CalculatorFeature() {
   const [quote, setQuote] = useState<QuoteResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [healthStatus, setHealthStatus] = useState<string>("checking...");
+  const [healthStatus, setHealthStatus] = useState<string>("ellenőrzés...");
 
   const formatHuf = useMemo(
     () =>
@@ -30,12 +30,12 @@ export function CalculatorFeature() {
     getHealth()
       .then((result) => {
         if (isMounted) {
-          setHealthStatus(result.status ?? "ok");
+          setHealthStatus(result.status ?? "rendben");
         }
       })
       .catch(() => {
         if (isMounted) {
-          setHealthStatus("unreachable");
+          setHealthStatus("nem elérhető");
         }
       });
 
@@ -52,10 +52,8 @@ export function CalculatorFeature() {
     try {
       const response = await calculateQuote({ size, paper, color, qty, lamination });
       setQuote(response);
-    } catch (submitError) {
-      const message =
-        submitError instanceof Error ? submitError.message : "Unexpected error while calculating quote.";
-      setError(message);
+    } catch {
+      setError("Váratlan hiba történt.");
       setQuote(null);
     } finally {
       setLoading(false);
@@ -66,9 +64,9 @@ export function CalculatorFeature() {
     <main className="page">
       <section className="container">
         <header className="header">
-          <h1>Print Quote</h1>
+          <h1>Árkalkulátor</h1>
           <p className="health">
-            API health: <strong>{healthStatus}</strong>
+            API állapot: <strong>{healthStatus}</strong>
           </p>
         </header>
 

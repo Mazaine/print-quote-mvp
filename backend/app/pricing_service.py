@@ -1,9 +1,16 @@
+import math
 from typing import Dict, Tuple
 
 from sqlmodel import Session, select
 
-from .models import AnchorPrice
+from .models import AnchorPrice, PrintSheet, ProductSpec, SheetPrice
 from .schemas.anchor import AnchorCreate, AnchorUpdate
+
+FLYER_SIZE_MM: dict[str, tuple[int, int]] = {
+    "A6": (105, 148),
+    "A5": (148, 210),
+    "A4": (210, 297),
+}
 
 
 def seed_anchor_prices(session: Session) -> int:
@@ -41,6 +48,122 @@ def seed_anchor_prices(session: Session) -> int:
     session.add_all(rows)
     session.commit()
     return len(rows)
+
+
+def seed_sra3(session: Session) -> int:
+    existing = session.exec(select(PrintSheet).where(PrintSheet.code == "SRA3")).first()
+    if existing is not None:
+        return 0
+
+    row = PrintSheet(
+        code="SRA3",
+        width_mm=320,
+        height_mm=450,
+        printable_width_mm=310,
+        printable_height_mm=440,
+    )
+    session.add(row)
+    session.commit()
+    return 1
+
+
+def seed_sheet_prices(session: Session) -> int:
+    defaults = {
+        "1+0": 600,
+        "4+0": 1200,
+        "4+4": 2000,
+    }
+
+    inserted = 0
+    for print_mode, base_price in defaults.items():
+        existing = session.exec(
+            select(SheetPrice)
+            .where(SheetPrice.sheet_code == "SRA3")
+            .where(SheetPrice.print_mode == print_mode)
+        ).first()
+        if existing is not None:
+            continue
+
+        session.add(
+            SheetPrice(
+                sheet_code="SRA3",
+                print_mode=print_mode,
+                base_price_per_sheet=base_price,
+                setup_fee=0,
+            )
+        )
+        inserted += 1
+
+    if inserted:
+        session.commit()
+
+    return inserted
+
+
+def seed_product_specs(session: Session) -> int:
+    rows = [
+        ProductSpec(product_code="flyer", finished_w_mm=105, finished_h_mm=148, bleed_mm=3, default_sheet_code="SRA3"),
+        ProductSpec(product_code="flyer", finished_w_mm=148, finished_h_mm=210, bleed_mm=3, default_sheet_code="SRA3"),
+        ProductSpec(product_code="flyer", finished_w_mm=210, finished_h_mm=297, bleed_mm=3, default_sheet_code="SRA3"),
+        ProductSpec(product_code="business_card", finished_w_mm=90, finished_h_mm=50, bleed_mm=3, default_sheet_code="SRA3"),
+    ]
+
+    inserted = 0
+    for row in rows:
+        existing = session.exec(
+            select(ProductSpec)
+            .where(ProductSpec.product_code == row.product_code)
+            .where(ProductSpec.finished_w_mm == row.finished_w_mm)
+            .where(ProductSpec.finished_h_mm == row.finished_h_mm)
+        ).first()
+        if existing is not None:
+            continue
+
+        session.add(row)
+        inserted += 1
+
+    if inserted:
+        session.commit()
+
+    return inserted
+
+
+def get_sheet(session: Session, code: str) -> PrintSheet | None:
+    return session.exec(select(PrintSheet).where(PrintSheet.code == code)).first()
+
+
+def get_sheet_price(session: Session, sheet_code: str, print_mode: str) -> SheetPrice | None:
+    return session.exec(
+        select(SheetPrice)
+        .where(SheetPrice.sheet_code == sheet_code)
+        .where(SheetPrice.print_mode == print_mode)
+    ).first()
+
+
+def get_product_spec(session: Session, product_code: str, size_key: str | None) -> ProductSpec | None:
+    if product_code == "flyer":
+        if size_key is None or size_key not in FLYER_SIZE_MM:
+            return None
+        w_mm, h_mm = FLYER_SIZE_MM[size_key]
+        return session.exec(
+            select(ProductSpec)
+            .where(ProductSpec.product_code == product_code)
+            .where(ProductSpec.finished_w_mm == w_mm)
+            .where(ProductSpec.finished_h_mm == h_mm)
+        ).first()
+
+    return session.exec(
+        select(ProductSpec).where(ProductSpec.product_code == product_code).order_by(ProductSpec.id)
+    ).first()
+
+
+def calc_per_sheet(sheet: PrintSheet, product_spec: ProductSpec) -> int:
+    effective_w = product_spec.finished_w_mm + 2 * product_spec.bleed_mm
+    effective_h = product_spec.finished_h_mm + 2 * product_spec.bleed_mm
+
+    normal = (sheet.printable_width_mm // effective_w) * (sheet.printable_height_mm // effective_h)
+    rotated = (sheet.printable_width_mm // effective_h) * (sheet.printable_height_mm // effective_w)
+    return max(normal, rotated)
 
 
 def list_anchors(
