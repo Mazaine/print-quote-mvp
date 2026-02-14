@@ -33,12 +33,13 @@ ALLOWED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png"}
 origins = [
     "http://localhost:5173",
     "http://localhost:3000",
-    "https://print-quote-mvp.vercel.app"
+    "https://print-quote-mvp.vercel.app",
 ]
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
