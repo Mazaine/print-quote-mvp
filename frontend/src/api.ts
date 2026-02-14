@@ -1,6 +1,7 @@
 import type { QuoteRequest, QuoteResponse } from "./types";
 
-export const API_BASE = "http://127.0.0.1:8001";
+export const API_BASE = "https://print-quote-mvp.onrender.com";
+
 
 export async function getHealth(): Promise<{ status: string }> {
   const response = await fetch(`${API_BASE}/health`);
