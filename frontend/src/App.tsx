@@ -2,31 +2,41 @@
 import { HomePage } from "./pages/HomePage";
 import { AdminPage } from "./features/admin/AdminPage";
 import Products from "./pages/Products.jsx";
+import ProductDetails from "./pages/ProductDetails.jsx";
 
-type RoutePath = "/" | "/admin" | "/products";
+type RouteState =
+  | { view: "home" }
+  | { view: "admin" }
+  | { view: "products" }
+  | { view: "product-details"; slug: string };
 
-function resolvePath(pathname: string): RoutePath {
-  if (pathname === "/admin") return "/admin";
-  if (pathname === "/products") return "/products";
-  return "/";
+function resolveRoute(pathname: string): RouteState {
+  if (pathname === "/") return { view: "home" };
+  if (pathname === "/admin") return { view: "admin" };
+  if (pathname === "/products") return { view: "products" };
+  if (pathname.startsWith("/products/")) {
+    const slug = pathname.replace("/products/", "").trim();
+    if (slug) return { view: "product-details", slug };
+  }
+  return { view: "home" };
 }
 
 function App() {
-  const [path, setPath] = useState<RoutePath>(() => resolvePath(window.location.pathname));
+  const [route, setRoute] = useState<RouteState>(() => resolveRoute(window.location.pathname));
 
   useEffect(() => {
     const onPopState = () => {
-      setPath(resolvePath(window.location.pathname));
+      setRoute(resolveRoute(window.location.pathname));
     };
 
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
-  function navigate(next: RoutePath) {
-    if (next === path) return;
-    window.history.pushState({}, "", next);
-    setPath(next);
+  function navigate(path: string) {
+    if (window.location.pathname === path) return;
+    window.history.pushState({}, "", path);
+    setRoute(resolveRoute(path));
   }
 
   return (
@@ -36,9 +46,13 @@ function App() {
         <button onClick={() => navigate("/products")}>Termékek</button>
         <button onClick={() => navigate("/admin")}>Admin</button>
       </nav>
-      {path === "/" && <HomePage />}
-      {path === "/products" && <Products />}
-      {path === "/admin" && <AdminPage />}
+
+      {route.view === "home" && <HomePage />}
+      {route.view === "admin" && <AdminPage />}
+      {route.view === "products" && <Products onOpenProduct={(slug: string) => navigate(`/products/${slug}`)} />}
+      {route.view === "product-details" && (
+        <ProductDetails slug={route.slug} onBack={() => navigate("/products")} />
+      )}
     </div>
   );
 }

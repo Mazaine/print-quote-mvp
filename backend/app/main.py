@@ -58,6 +58,7 @@ PRINT_PRODUCTS = [
         "description": "Kétoldalas promóciós szórólap rövid határidővel.",
         "product_code": "flyer",
         "basePrice": 8900,
+        "imageUrl": "https://images.unsplash.com/photo-1586717791821-3f44a563fa4c?auto=format&fit=crop&w=1200&q=80",
     },
     {
         "id": "poster-a3",
@@ -66,6 +67,7 @@ PRINT_PRODUCTS = [
         "description": "Élénk színes poszter üzletekbe és rendezvényekre.",
         "product_code": "poster",
         "basePrice": 6900,
+        "imageUrl": "https://images.unsplash.com/photo-1513519245088-0e12902e5a38?auto=format&fit=crop&w=1200&q=80",
     },
     {
         "id": "business-card-classic",
@@ -74,6 +76,7 @@ PRINT_PRODUCTS = [
         "description": "Klasszikus névjegy matt vagy fényes kivitelben.",
         "product_code": "business_card",
         "basePrice": 4900,
+        "imageUrl": "https://images.unsplash.com/photo-1586953208448-b95a79798f07?auto=format&fit=crop&w=1200&q=80",
     },
     {
         "id": "sticker-sheet",
@@ -82,6 +85,7 @@ PRINT_PRODUCTS = [
         "description": "Egyedi formájú, beltéri felhasználásra.",
         "product_code": "sticker",
         "basePrice": 5900,
+        "imageUrl": "https://images.unsplash.com/photo-1621905252507-b35492cc74b4?auto=format&fit=crop&w=1200&q=80",
     },
     {
         "id": "rollup-standard",
@@ -90,6 +94,7 @@ PRINT_PRODUCTS = [
         "description": "Kiállításokra és bemutatókra kész roll-up rendszer.",
         "product_code": "rollup",
         "basePrice": 24900,
+        "imageUrl": "https://images.unsplash.com/photo-1523726491678-bf852e717f6a?auto=format&fit=crop&w=1200&q=80",
     },
     {
         "id": "brochure-a4",
@@ -98,6 +103,7 @@ PRINT_PRODUCTS = [
         "description": "Termékbemutatókhoz és árlistákhoz ideális.",
         "product_code": "brochure",
         "basePrice": 15900,
+        "imageUrl": "https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=1200&q=80",
     },
     {
         "id": "booklet-a5",
@@ -106,6 +112,7 @@ PRINT_PRODUCTS = [
         "description": "Kisebb oldalszámú promóciós füzet.",
         "product_code": "booklet",
         "basePrice": 19900,
+        "imageUrl": "https://images.unsplash.com/photo-1512820790803-83ca734da794?auto=format&fit=crop&w=1200&q=80",
     },
     {
         "id": "banner-custom",
@@ -114,6 +121,7 @@ PRINT_PRODUCTS = [
         "description": "Időjárásálló kültéri reklámfelület.",
         "product_code": "banner",
         "basePrice": 12900,
+        "imageUrl": "https://images.unsplash.com/photo-1469474968028-56623f02e42e?auto=format&fit=crop&w=1200&q=80",
     },
 ]
 
@@ -135,6 +143,14 @@ def health():
 @app.get("/products")
 def list_products():
     return PRINT_PRODUCTS
+
+
+@app.get("/products/{slug}")
+def product_details(slug: str):
+    product = next((item for item in PRINT_PRODUCTS if item["slug"] == slug), None)
+    if product is None:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return product
 
 
 @app.get("/catalog")

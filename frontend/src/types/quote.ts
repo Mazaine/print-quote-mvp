@@ -35,6 +35,7 @@ export interface CatalogProduct {
   name: string;
   description: string;
   basePrice: number;
+  imageUrl: string;
   product_code: string;
   options: {
     sizes: string[];

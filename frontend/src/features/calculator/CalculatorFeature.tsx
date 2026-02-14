@@ -5,6 +5,11 @@ import { CalculatorForm } from "./components/CalculatorForm";
 import { QuoteResult } from "./components/QuoteResult";
 import type { CalculatorCatalogResponse, CatalogCombination, CatalogProduct, QuoteResponse } from "../../types";
 
+interface CalculatorFeatureProps {
+  initialProductSlug?: string;
+  embedded?: boolean;
+}
+
 function uniqueStrings(values: string[]): string[] {
   return Array.from(new Set(values));
 }
@@ -34,12 +39,12 @@ function allowedSizes(product: CatalogProduct | null): string[] {
   return product.options.sizes;
 }
 
-export function CalculatorFeature() {
+export function CalculatorFeature({ initialProductSlug, embedded = false }: CalculatorFeatureProps) {
   const [catalog, setCatalog] = useState<CalculatorCatalogResponse | null>(null);
   const [catalogLoading, setCatalogLoading] = useState(true);
   const [catalogError, setCatalogError] = useState<string | null>(null);
 
-  const [productSlug, setProductSlug] = useState("");
+  const [productSlug, setProductSlug] = useState(initialProductSlug ?? "");
   const [size, setSize] = useState("");
   const [paper, setPaper] = useState("");
   const [color, setColor] = useState("");
@@ -58,6 +63,12 @@ export function CalculatorFeature() {
       }),
     []
   );
+
+  useEffect(() => {
+    if (initialProductSlug) {
+      setProductSlug(initialProductSlug);
+    }
+  }, [initialProductSlug]);
 
   useEffect(() => {
     let isMounted = true;
@@ -87,7 +98,7 @@ export function CalculatorFeature() {
     fetchCatalog()
       .then((result: CalculatorCatalogResponse) => {
         if (!isMounted) return;
-        setCatalog(result as CalculatorCatalogResponse);
+        setCatalog(result);
 
         const firstProduct = result.products[0];
         if (!firstProduct) {
@@ -95,7 +106,7 @@ export function CalculatorFeature() {
           return;
         }
 
-        setProductSlug(firstProduct.slug);
+        setProductSlug((current) => current || firstProduct.slug);
       })
       .catch(() => {
         if (isMounted) {
@@ -251,6 +262,55 @@ export function CalculatorFeature() {
 
   const submitDisabled = catalogLoading || !!catalogError || !canCalculate;
 
+  const content = (
+    <>
+      {catalogLoading && <p>Betöltés...</p>}
+      {catalogError && <p className="error">{catalogError}</p>}
+
+      {!catalogLoading && !catalogError && selectedProduct && (
+        <CalculatorForm
+          productSlug={productSlug}
+          productOptions={productOptions}
+          size={size}
+          paper={paper}
+          color={color}
+          qty={qty}
+          sizeOptions={sizeOptions}
+          paperOptions={paperOptions}
+          colorOptions={colorOptions}
+          qtyOptions={qtyOptions}
+          lamination={lamination}
+          loading={loading}
+          submitDisabled={submitDisabled}
+          onProductChange={setProductSlug}
+          onSizeChange={setSize}
+          onPaperChange={setPaper}
+          onColorChange={setColor}
+          onQtyChange={setQty}
+          onLaminationChange={setLamination}
+          onSubmit={onSubmit}
+        />
+      )}
+
+      {!catalogLoading && !catalogError && !canCalculate && (
+        <p className="error">Nincs beállított ár ehhez a kombinációhoz.</p>
+      )}
+
+      {error && <p className="error">{error}</p>}
+
+      {quote && <QuoteResult quote={quote} formatHuf={formatHuf} />}
+    </>
+  );
+
+  if (embedded) {
+    return (
+      <section className="calculator-embed">
+        <h2 className="calculator-embed-title">Árkalkulátor</h2>
+        {content}
+      </section>
+    );
+  }
+
   return (
     <main className="page">
       <section className="container">
@@ -260,42 +320,7 @@ export function CalculatorFeature() {
             API állapot: <strong>{healthStatus}</strong>
           </p>
         </header>
-
-        {catalogLoading && <p>Betöltés...</p>}
-        {catalogError && <p className="error">{catalogError}</p>}
-
-        {!catalogLoading && !catalogError && selectedProduct && (
-          <CalculatorForm
-            productSlug={productSlug}
-            productOptions={productOptions}
-            size={size}
-            paper={paper}
-            color={color}
-            qty={qty}
-            sizeOptions={sizeOptions}
-            paperOptions={paperOptions}
-            colorOptions={colorOptions}
-            qtyOptions={qtyOptions}
-            lamination={lamination}
-            loading={loading}
-            submitDisabled={submitDisabled}
-            onProductChange={setProductSlug}
-            onSizeChange={setSize}
-            onPaperChange={setPaper}
-            onColorChange={setColor}
-            onQtyChange={setQty}
-            onLaminationChange={setLamination}
-            onSubmit={onSubmit}
-          />
-        )}
-
-        {!catalogLoading && !catalogError && !canCalculate && (
-          <p className="error">Nincs beállított ár ehhez a kombinációhoz.</p>
-        )}
-
-        {error && <p className="error">{error}</p>}
-
-        {quote && <QuoteResult quote={quote} formatHuf={formatHuf} />}
+        {content}
       </section>
     </main>
   );

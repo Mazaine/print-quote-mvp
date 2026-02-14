@@ -379,6 +379,7 @@ def get_catalog(session: Session, products: list[dict]) -> dict:
                 "name": product["name"],
                 "description": product["description"],
                 "basePrice": product["basePrice"],
+                "imageUrl": product.get("imageUrl", ""),
                 "product_code": product_code,
                 "options": {
                     "sizes": sizes,

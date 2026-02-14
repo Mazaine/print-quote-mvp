@@ -2,7 +2,7 @@
 import ProductCard from "../components/ProductCard";
 import { fetchProducts } from "../services/api";
 
-export default function Products() {
+export default function Products({ onOpenProduct }) {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -50,7 +50,15 @@ export default function Products() {
         {!loading && !error && (
           <section className="product-grid">
             {products.map((product) => (
-              <ProductCard key={product.id} product={product} />
+              <ProductCard
+                key={product.id}
+                product={product}
+                onOpen={(slug) => {
+                  if (typeof onOpenProduct === "function") {
+                    onOpenProduct(slug);
+                  }
+                }}
+              />
             ))}
           </section>
         )}

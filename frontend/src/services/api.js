@@ -10,6 +10,14 @@ export async function fetchProducts() {
   return response.json();
 }
 
+export async function fetchProductBySlug(slug) {
+  const response = await fetch(`${API_BASE}/products/${slug}`);
+  if (!response.ok) {
+    throw new Error("Nem sikerült betölteni a terméket.");
+  }
+  return response.json();
+}
+
 export async function fetchCatalog() {
   const response = await fetch(`${API_BASE}/catalog`);
   if (!response.ok) {
