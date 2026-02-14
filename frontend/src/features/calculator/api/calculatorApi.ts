@@ -1,5 +1,5 @@
 import { http } from "../../../api/http";
-import type { QuoteRequest, QuoteResponse } from "../../../types";
+import type { CalculatorCatalogResponse, QuoteRequest, QuoteResponse } from "../../../types";
 
 export async function getHealth(): Promise<{ status: string }> {
   const response = await http("/health");
@@ -24,4 +24,12 @@ export async function calculateQuote(payload: QuoteRequest): Promise<QuoteRespon
   }
 
   return (await response.json()) as QuoteResponse;
+}
+
+export async function getCalculatorOptions(): Promise<CalculatorCatalogResponse> {
+  const response = await http("/calculator/options");
+  if (!response.ok) {
+    throw new Error(`Options request failed with status ${response.status}`);
+  }
+  return (await response.json()) as CalculatorCatalogResponse;
 }

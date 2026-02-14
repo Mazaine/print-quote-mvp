@@ -1,4 +1,4 @@
-import type { QuoteResponse } from "../../../types";
+﻿import type { QuoteResponse } from "../../../types";
 
 interface QuoteResultProps {
   quote: QuoteResponse;
@@ -8,11 +8,12 @@ interface QuoteResultProps {
 export function QuoteResult({ quote, formatHuf }: QuoteResultProps) {
   return (
     <article className="result-card">
-      <h2>Ajánlat</h2>
+      <h2>Végösszeg</h2>
       <p className="final-price">
         {formatHuf.format(quote.final_price)} {quote.currency}
       </p>
 
+      <h3>Ár részletezés</h3>
       <ul className="breakdown-list">
         {quote.breakdown.map((item) => (
           <li key={`${item.label}-${item.amount}`}>
@@ -25,7 +26,7 @@ export function QuoteResult({ quote, formatHuf }: QuoteResultProps) {
       </ul>
 
       <details>
-        <summary>Debug JSON</summary>
+        <summary>Részletek (JSON)</summary>
         <pre>{JSON.stringify(quote, null, 2)}</pre>
       </details>
     </article>
