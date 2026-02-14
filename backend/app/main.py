@@ -1,8 +1,11 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from sqlmodel import Session
 
+from .db import engine, init_db
 from .models import QuoteRequest, QuoteResponse
 from .pricing import calculate_quote
+from .pricing_service import seed_anchor_prices
 
 app = FastAPI(title="print-quote-mvp", version="0.1.0")
 
@@ -20,6 +23,13 @@ app.add_middleware(
 )
 
 
+@app.on_event("startup")
+def startup() -> None:
+    init_db()
+    with Session(engine) as session:
+        seed_anchor_prices(session)
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -27,5 +37,9 @@ def health():
 
 @app.post("/quote/calculate", response_model=QuoteResponse)
 def quote_calculate(payload: QuoteRequest):
-    final_price, breakdown = calculate_quote(payload)
+    try:
+        final_price, breakdown = calculate_quote(payload)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     return QuoteResponse(final_price=final_price, currency="HUF", breakdown=breakdown)

@@ -1,9 +1,8 @@
-import type { QuoteRequest, QuoteResponse } from "./types";
-
-export const API_BASE = "http://127.0.0.1:8001";
+import { http } from "../../../api/http";
+import type { QuoteRequest, QuoteResponse } from "../../../types";
 
 export async function getHealth(): Promise<{ status: string }> {
-  const response = await fetch(`${API_BASE}/health`);
+  const response = await http("/health");
   if (!response.ok) {
     throw new Error(`Health check failed with status ${response.status}`);
   }
@@ -11,7 +10,7 @@ export async function getHealth(): Promise<{ status: string }> {
 }
 
 export async function calculateQuote(payload: QuoteRequest): Promise<QuoteResponse> {
-  const response = await fetch(`${API_BASE}/quote/calculate`, {
+  const response = await http("/quote/calculate", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
