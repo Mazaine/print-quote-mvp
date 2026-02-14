@@ -33,7 +33,7 @@ ALLOWED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png"}
 origins = [
     "http://localhost:5173",
     "http://localhost:3000",
-    "https://print-quote-mvp.vercel.app/"
+    "https://print-quote-mvp.vercel.app"
 ]
 
 app.add_middleware(
