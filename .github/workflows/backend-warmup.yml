@@ -11,4 +11,4 @@ jobs:
     steps:
       - name: Ping backend
         run: |
-          curl --silent --show-error --fail --max-time 25 https://print-quote-mvp.onrender.com || exit 0
+          curl --silent --show-error --fail --max-time 25 https://print-quote-mvp.onrender.com/ || exit 0
