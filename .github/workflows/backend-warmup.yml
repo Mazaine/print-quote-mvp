@@ -1,14 +1,12 @@
-name: Backend warmup (keep-alive)
+name: Keep Render Awake
 
 on:
   schedule:
     - cron: "*/5 * * * *"
-  workflow_dispatch: {}
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping backend
-        run: |
-          curl --silent --show-error --fail --max-time 25 https://print-quote-mvp.onrender.com/ || exit 0
+      - name: Curl backend
+        run: curl https://print-quote-mvp.onrender.com/health
